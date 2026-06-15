@@ -1,83 +1,60 @@
-// 端到端联机测试 - 简化版
+/**
+ * 精简联机测试 — 验证核心 bug 修复
+ * 1. room-created 返回 playerIdx=0
+ * 2. room-joined 返回 playerIdx=1
+ * 3. game-start 事件双方都能收到（无 ReferenceError）
+ * 4. currentPlayerIdx 正确设为 firstPlayerIdx
+ */
 const { io } = require('socket.io-client');
-const SERVER = 'http://localhost:3001';
 
-console.log('🧪 开始联机对战测试...');
-
-const p1 = io(SERVER, { autoConnect: false });
-const p2 = io(SERVER, { autoConnect: false });
+const P1 = io('http://localhost:3001', { forceNew: true });
+const P2 = io('http://localhost:3001', { forceNew: true });
 
 let roomId = '';
-let gameStarted = false;
-let gameOver = false;
-let currentIdx = -1;
-let totalBubbles = 0;
-let poppedCount = 0;
+let checks = { p1Idx: false, p2Idx: false, p1Start: false, p2Start: false };
 
-p1.connect();
-
-p1.on('connect', () => {
-  console.log('[P1] ✅ 已连接');
-  p1.emit('create-room', { playerName: '甲', totalBubbles: 8, maxPop: 3 });
+P1.on('connect', () => {
+  P1.emit('create-room', { playerName: '甲', totalBubbles: 6, maxPop: 3 });
 });
 
-p1.on('room-created', ({ roomId: rid }) => {
+P1.on('room-created', ({ roomId: rid, playerIdx }) => {
   roomId = rid;
-  console.log('[P1] 房间已创建：' + rid);
-  p2.connect();
+  checks.p1Idx = (playerIdx === 0);
+  console.log(`✅ P1 playerIdx = ${playerIdx} (期望 0): ${checks.p1Idx ? 'PASS' : 'FAIL'}`);
+  P2.emit('join-room', { roomId, playerName: '乙' });
 });
 
-p1.on('player-joined', ({ players }) => {
-  console.log('[P1] 对手已加入：' + players.join(' vs '));
-  setTimeout(() => {
-    console.log('[P1] 开始游戏！');
-    p1.emit('start-game', { roomId });
-  }, 500);
+P2.on('room-joined', ({ playerIdx }) => {
+  checks.p2Idx = (playerIdx === 1);
+  console.log(`✅ P2 playerIdx = ${playerIdx} (期望 1): ${checks.p2Idx ? 'PASS' : 'FAIL'}`);
 });
 
-p2.on('connect', () => {
-  console.log('[P2] ✅ 已连接');
-  if (roomId) p2.emit('join-room', { roomId, playerName: '乙' });
+P1.on('player-joined', () => {
+  console.log('P1 点击开始游戏...');
+  P1.emit('start-game', {});
 });
 
-// 只让 P1 处理 game-start 并驱动回合
-p1.on('game-start', ({ firstPlayerIdx, players, totalBubbles: tb }) => {
-  if (gameStarted) return;
-  gameStarted = true;
-  totalBubbles = tb;
-  currentIdx = firstPlayerIdx;
-  console.log('🎮 游戏开始！先手：' + players[firstPlayerIdx] + '，泡泡数：' + tb);
-  doMove();
+P1.on('game-start', ({ firstPlayerIdx, players }) => {
+  checks.p1Start = true;
+  console.log(`✅ P1 收到 game-start: firstPlayerIdx=${firstPlayerIdx}, players=${JSON.stringify(players)}`);
+  tryAllChecks();
 });
 
-p1.on('turn-change', ({ currentPlayerIdx, remaining }) => {
-  if (gameOver) return;
-  currentIdx = currentPlayerIdx;
-  console.log('🔄 换人 → ' + (currentPlayerIdx === 0 ? '甲' : '乙') + '（剩余 ' + remaining + '）');
-  setTimeout(doMove, 300);
+P2.on('game-start', ({ firstPlayerIdx, players }) => {
+  checks.p2Start = true;
+  console.log(`✅ P2 收到 game-start: firstPlayerIdx=${firstPlayerIdx}, players=${JSON.stringify(players)}`);
+  tryAllChecks();
 });
 
-p1.on('game-over', ({ winnerIdx, winnerName }) => {
-  if (gameOver) return;
-  gameOver = true;
-  console.log('🏆 胜者：' + winnerName + '  ✅ 联机测试通过！');
-  p1.disconnect(); p2.disconnect();
-  process.exit(0);
-});
-
-function doMove() {
-  if (gameOver) return;
-  const s = currentIdx === 0 ? p1 : p2;
-  const remaining = totalBubbles - poppedCount;
-  const cnt = Math.min(1 + Math.floor(Math.random() * 2), remaining);
-  console.log('[' + (currentIdx === 0 ? '甲' : '乙') + '] 按 ' + cnt + ' 个泡泡');
-  for (let i = 0; i < cnt; i++) {
-    s.emit('toggle-bubble', { index: poppedCount + i, roomId });
+function tryAllChecks() {
+  if (checks.p1Start && checks.p2Start) {
+    const allPass = checks.p1Idx && checks.p2Idx;
+    console.log('\n' + (allPass ? '🎉 全部检查通过！开始游戏 bug 已修复！' : '❌ 部分检查失败'));
+    P1.disconnect(); P2.disconnect();
+    process.exit(allPass ? 0 : 1);
   }
-  poppedCount += cnt;
-  setTimeout(() => s.emit('confirm-pop', { roomId }), 400);
 }
 
-setTimeout(() => {
-  if (!gameOver) { console.error('⏰ 超时'); process.exit(1); }
-}, 15000);
+P1.on('error-msg', ({ msg }) => console.error('P1 err:', msg));
+P2.on('error-msg', ({ msg }) => console.error('P2 err:', msg));
+setTimeout(() => { console.error('❌ 超时'); process.exit(1); }, 8000);

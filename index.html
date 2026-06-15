@@ -375,8 +375,9 @@ function connectSocket() {
   });
 
   // 房间创建成功
-  socket.on('room-created', ({ roomId }) => {
+  socket.on('room-created', ({ roomId, playerIdx }) => {
     currentRoomId = roomId;
+    myPlayerIdx = playerIdx;  // 房主 = 0
     $('created-room-id').textContent = roomId;
     $('created-room-id2').textContent = roomId;
     showScreen('wait-screen');
@@ -386,6 +387,11 @@ function connectSocket() {
   // 房间列表更新
   socket.on('room-list', (list) => {
     renderRoomList(list);
+  });
+
+  // 加入房间成功
+  socket.on('room-joined', ({ roomId, playerIdx }) => {
+    myPlayerIdx = playerIdx;  // 加入者 = 1
   });
 
   // 对方加入
@@ -404,7 +410,8 @@ function connectSocket() {
     gameState = {
       players, totalBubbles, maxPop,
       bubbles: Array(totalBubbles).fill(false),
-      currentPlayerIdx, firstPlayerIdx
+      currentPlayerIdx: firstPlayerIdx,
+      firstPlayerIdx
     };
     selectedBubbles = new Set();
     isMyTurn = (myPlayerIdx === firstPlayerIdx);

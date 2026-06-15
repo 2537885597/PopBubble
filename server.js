@@ -51,7 +51,7 @@ io.on('connection', (socket) => {
     socket.roomId = roomId;
     socket.playerIdx = 0;
     console.log(`[创建房间] ${roomId} by ${playerName}`);
-    socket.emit('room-created', { roomId });
+    socket.emit('room-created', { roomId, playerIdx: 0 });
     io.emit('room-list', getRoomList());
   });
 
@@ -66,7 +66,9 @@ io.on('connection', (socket) => {
     socket.roomId = roomId;
     socket.playerIdx = 1;
     console.log(`[加入房间] ${roomId} ${playerName}`);
-    // 通知双方
+    // 通知加入者自己的玩家编号
+    socket.emit('room-joined', { roomId, playerIdx: 1 });
+    // 通知双方有人加入
     io.to(roomId).emit('player-joined', {
       players: room.players.map(p => p.name),
       host: room.players[0].name,
