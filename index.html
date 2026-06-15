@@ -3,288 +3,300 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>按泡泡板</title>
+<title>按泡泡板 · 联机对战</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--primary:#6c5ce7;--primary-light:#a29bfe;--primary-dark:#5541d6;--accent:#fd79a8;--accent-light:#fab1d0;--success:#00b894;--warning:#fdcb6e;--danger:#e17055;--bg:#f0f0f8;--card:#fff;--text:#2d3436;--text-light:#636e72;--text-muted:#b2bec3;--border:#e0e0ee;--shadow:0 4px 20px rgba(108,92,231,.12);--shadow-lg:0 8px 40px rgba(108,92,231,.18);--radius:16px;--radius-sm:10px;--radius-xs:6px}
+:root{
+  --primary:#6c5ce7;--primary-light:#a29bfe;--primary-dark:#5541d6;
+  --accent:#fd79a8;--accent-light:#fab1d0;
+  --success:#00b894;--warning:#fdcb6e;--danger:#e17055;
+  --bg:#f0f0f8;--card:#fff;--text:#2d3436;--text-light:#636e72;--text-muted:#b2bec3;
+  --border:#e0e0ee;--shadow:0 4px 20px rgba(108,92,231,.12);--shadow-lg:0 8px 40px rgba(108,92,231,.18);
+  --radius:16px;--radius-sm:10px;}
 body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 .screen{display:none;min-height:100vh;padding:20px;animation:fadeIn .4s ease}.screen.active{display:flex;flex-direction:column;align-items:center}
 @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-
-/* ===== Header ===== */
-.game-header{text-align:center;padding:30px 20px 10px;width:100%;max-width:560px}
-.game-title{font-size:2.4em;font-weight:900;background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:2px;margin-bottom:4px}
-.game-subtitle{color:var(--text-muted);font-size:.88em;font-weight:300}
-
-/* ===== Cards ===== */
-.card{background:var(--card);border-radius:var(--radius);padding:22px;width:100%;max-width:560px;box-shadow:var(--shadow);margin-top:16px}
+.top-bar{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;padding:10px 0;margin-bottom:4px}
+.top-bar .back-btn{background:none;border:none;font-size:.88em;color:var(--primary);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px}
+.conn-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.conn-dot.on{background:var(--success);box-shadow:0 0 6px rgba(0,184,148,.6)}
+.conn-dot.off{background:var(--danger);box-shadow:0 0 6px rgba(225,112,85,.6)}
+.game-header{text-align:center;padding:20px 20px 6px;width:100%;max-width:560px}
+.game-title{font-size:2.2em;font-weight:900;background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:2px}
+.game-subtitle{color:var(--text-muted);font-size:.84em;font-weight:300}
+.card{background:var(--card);border-radius:var(--radius);padding:22px;width:100%;max-width:560px;box-shadow:var(--shadow);margin-top:14px}
 .card-title{font-size:1.05em;font-weight:700;color:var(--primary-dark);margin-bottom:16px;display:flex;align-items:center;gap:8px}
-.card-title i{font-size:1.1em}
-
-/* ===== Form ===== */
 .form-group{margin-bottom:16px}
 .form-label{display:block;font-size:.85em;font-weight:500;color:var(--text-light);margin-bottom:6px}
 .form-input{width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:var(--radius-sm);font-size:.95em;font-family:inherit;transition:border-color .2s,box-shadow .2s;outline:none;background:#fafafe}
 .form-input:focus{border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(108,92,231,.1)}
 .form-row{display:flex;gap:12px}.form-row .form-group{flex:1}
 .form-hint{font-size:.75em;color:var(--text-muted);margin-top:4px}
-
-/* ===== Buttons ===== */
 .btn{padding:12px 28px;border:none;border-radius:var(--radius-sm);font-size:.95em;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
 .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;box-shadow:0 4px 15px rgba(108,92,231,.35)}
 .btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(108,92,231,.45)}
-.btn-primary:active{transform:translateY(0)}
 .btn-secondary{background:var(--bg);color:var(--primary);border:2px solid var(--primary-light)}
 .btn-secondary:hover{background:rgba(108,92,231,.08)}
 .btn-accent{background:linear-gradient(135deg,var(--accent),#e84393);color:#fff;box-shadow:0 4px 15px rgba(253,121,168,.35)}
-.btn-accent:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(253,121,168,.45)}
-.btn-lg{padding:16px 40px;font-size:1.15em;border-radius:var(--radius)}
+.btn-danger{background:linear-gradient(135deg,var(--danger),#d63031);color:#fff}
+.btn-sm{padding:8px 16px;font-size:.84em}
 .btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+.btn-lg{padding:16px 40px;font-size:1.15em}
 .btn-group{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-
-/* ===== Coin Toss ===== */
-.coin-area{display:flex;flex-direction:column;align-items:center;padding:30px 0}
-.coin{width:130px;height:130px;border-radius:50%;background:linear-gradient(145deg,#ffd32a,#f9ca24,#f0932b);display:flex;align-items:center;justify-content:center;font-size:3.2em;box-shadow:0 8px 30px rgba(240,147,43,.4),inset 0 -4px 10px rgba(0,0,0,.1);margin-bottom:20px;transition:transform .2s;user-select:none}
-.coin.flipping{animation:coinFlip 1.2s ease-in-out}
-@keyframes coinFlip{0%{transform:rotateY(0)}25%{transform:rotateY(540deg)}50%{transform:rotateY(1080deg)}75%{transform:rotateY(1620deg)}100%{transform:rotateY(2160deg)}}
-.coin-result{font-size:1.3em;font-weight:700;color:var(--primary-dark);min-height:2em;text-align:center}
-.coin-result span{color:var(--accent)}
-
-/* ===== Game Board ===== */
+.mode-cards{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.mode-card{flex:1;min-width:140px;max-width:220px;padding:24px 18px;border:2px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all .25s;text-align:center;background:var(--card)}
+.mode-card:hover{border-color:var(--primary-light);transform:translateY(-4px);box-shadow:var(--shadow)}
+.mode-card.selected{border-color:var(--primary);background:linear-gradient(135deg,rgba(108,92,231,.06),rgba(253,121,168,.04));transform:translateY(-4px)}
+.mode-icon{font-size:2.4em;margin-bottom:8px}
+.mode-name{font-weight:700;font-size:1.05em;color:var(--primary-dark)}
+.mode-desc{font-size:.78em;color:var(--text-light);margin-top:4px;line-height:1.5}
+.room-list{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;margin:10px 0}
+.room-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border:2px solid var(--border);border-radius:var(--radius-sm);transition:all .2s;cursor:pointer}
+.room-item:hover{border-color:var(--primary-light);background:rgba(108,92,231,.03)}
+.room-id{font-weight:700;font-size:1.1em;color:var(--primary-dark);letter-spacing:2px}
+.room-info{font-size:.82em;color:var(--text-light)}
+.room-empty{text-align:center;color:var(--text-muted);font-size:.9em;padding:20px}
+.wait-area{text-align:center;padding:20px 0}
+.wait-icon{font-size:3.2em;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.wait-text{font-size:1.1em;font-weight:600;color:var(--primary-dark);margin:12px 0 4px}
+.wait-sub{color:var(--text-light);font-size:.88em}
+.room-id-display{display:inline-block;margin:12px auto;padding:8px 20px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;border-radius:20px;font-weight:700;font-size:1.1em;letter-spacing:3px}
+.players-bar{display:flex;gap:10px;justify-content:center;width:100%;max-width:560px;margin-bottom:10px}
+.player-chip{display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:30px;font-size:.88em;font-weight:600;transition:all .3s;border:2px solid transparent}
+.player-chip.p1{background:rgba(108,92,231,.1);color:var(--primary-dark)}
+.player-chip.p2{background:rgba(253,121,168,.1);color:#c0225e}
+.player-chip.is-turn{border-color:currentColor;box-shadow:0 0 12px rgba(108,92,231,.2)}
+.player-dot{width:10px;height:10px;border-radius:50%}
 .game-info{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;width:100%;max-width:560px}
 .info-badge{background:var(--card);border-radius:var(--radius-sm);padding:8px 14px;font-size:.82em;box-shadow:0 2px 8px rgba(0,0,0,.06);display:flex;align-items:center;gap:5px}
-.info-badge i{font-size:1em}
-.info-badge .value{font-weight:700;color:var(--primary-dark)}
-
+.info-badge .val{font-weight:700;color:var(--primary-dark)}
 .turn-indicator{width:100%;max-width:560px;text-align:center;padding:14px;border-radius:var(--radius);margin-bottom:14px;font-weight:600;font-size:1.05em;transition:all .3s}
-.turn-indicator.p1{background:linear-gradient(135deg,rgba(108,92,231,.12),rgba(108,92,231,.06));color:var(--primary-dark);border:2px solid rgba(108,92,231,.25)}
-.turn-indicator.p2{background:linear-gradient(135deg,rgba(253,121,168,.12),rgba(253,121,168,.06));color:#c0225e;border:2px solid rgba(253,121,168,.25)}
-
+.turn-indicator.t1{background:linear-gradient(135deg,rgba(108,92,231,.12),rgba(108,92,231,.06));color:var(--primary-dark);border:2px solid rgba(108,92,231,.25)}
+.turn-indicator.t2{background:linear-gradient(135deg,rgba(253,121,168,.12),rgba(253,121,168,.06));color:#c0225e;border:2px solid rgba(253,121,168,.25)}
 .board-container{background:linear-gradient(145deg,#dfe6e9,#b2bec3);border-radius:var(--radius);padding:20px;width:100%;max-width:560px;box-shadow:inset 0 2px 10px rgba(0,0,0,.12),0 4px 20px rgba(0,0,0,.08)}
 .board{display:grid;gap:8px;justify-content:center;margin:0 auto}
-
-.bubble{aspect-ratio:1;border-radius:50%;cursor:pointer;transition:all .15s ease;position:relative;display:flex;align-items:center;justify-content:center;min-width:36px;min-height:36px}
+.bubble{aspect-ratio:1;border-radius:50%;cursor:pointer;transition:all .15s ease;position:relative;display:flex;align-items:center;justify-content:center;min-width:34px;min-height:34px}
 .bubble-inner{width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.7),transparent 60%),radial-gradient(circle at 60% 60%,rgba(0,0,0,.04),transparent 50%),linear-gradient(145deg,#ecf0f1,#c8d6e5);box-shadow:3px 3px 8px rgba(0,0,0,.18),-2px -2px 6px rgba(255,255,255,.9),inset 1px 1px 4px rgba(255,255,255,.6),inset -1px -1px 3px rgba(0,0,0,.08);transition:all .15s ease}
-.bubble:not(.popped):not(.selected):hover .bubble-inner{background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.8),transparent 60%),radial-gradient(circle at 60% 60%,rgba(0,0,0,.04),transparent 50%),linear-gradient(145deg,#f5f6fa,#dfe4ea);box-shadow:4px 4px 12px rgba(0,0,0,.2),-2px -2px 8px rgba(255,255,255,1),inset 1px 1px 4px rgba(255,255,255,.6),inset -1px -1px 3px rgba(0,0,0,.08)}
-.bubble.selected .bubble-inner{background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.6),transparent 60%),linear-gradient(145deg,var(--primary-light),var(--primary));box-shadow:3px 3px 8px rgba(108,92,231,.3),-2px -2px 6px rgba(255,255,255,.9),inset 1px 1px 4px rgba(255,255,255,.3)}
-.bubble.popped .bubble-inner{background:linear-gradient(145deg,#dfe6e9,#b2bec3);box-shadow:inset 2px 2px 5px rgba(0,0,0,.15),inset -1px -1px 3px rgba(255,255,255,.4);opacity:.35;cursor:default}
+.bubble:not(.popped):not(.selected):not(.not-turn):hover .bubble-inner{background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.8),transparent 60%),radial-gradient(circle at 60% 60%,rgba(0,0,0,.04),transparent 50%),linear-gradient(145deg,#f5f6fa,#dfe4ea);box-shadow:4px 4px 12px rgba(0,0,0,.2),-2px -2px 8px rgba(255,255,255,1)}
+.bubble.selected .bubble-inner{background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.6),transparent 60%),linear-gradient(145deg,var(--primary-light),var(--primary));box-shadow:3px 3px 8px rgba(108,92,231,.3)}
+.bubble.not-turn{cursor:default!important}
+.bubble.popped .bubble-inner{background:linear-gradient(145deg,#dfe6e9,#b2bec3);box-shadow:inset 2px 2px 5px rgba(0,0,0,.15),inset -1px -1px 3px rgba(255,255,255,.4);opacity:.35}
 .bubble.popping .bubble-inner{animation:pop .35s ease-out forwards}
 @keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.25);opacity:.7}100%{transform:scale(.8);opacity:.35}}
-
 .game-controls{display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap;width:100%;max-width:560px}
-.selection-info{text-align:center;font-size:.88em;color:var(--text-light);margin-top:6px;min-height:1.4em}
-
-/* ===== Win Screen ===== */
-.win-content{text-align:center;padding:30px 0}
-.win-crown{font-size:4em;animation:crownBounce 1s ease-in-out infinite alternate}
-@keyframes crownBounce{from{transform:translateY(0)}to{transform:translateY(-10px)}}
-.win-name{font-size:2em;font-weight:900;margin:8px 0;background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.win-msg{color:var(--text-light);font-size:1.05em;margin-bottom:20px}
+.sel-info{text-align:center;font-size:.88em;color:var(--text-light);margin-top:6px;min-height:1.4em}
+.win-content{text-align:center;padding:20px 0}
+.win-crown{font-size:3.6em;animation:crownB 1s ease-in-out infinite alternate}
+@keyframes crownB{from{transform:translateY(0)}to{transform:translateY(-10px)}}
+.win-name{font-size:1.8em;font-weight:900;margin:8px 0;background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.win-msg{color:var(--text-light);font-size:1em;margin-bottom:16px}
 .scores{display:flex;justify-content:center;gap:20px;margin:16px 0}
-.score-item{padding:14px 22px;border-radius:var(--radius-sm);min-width:110px;text-align:center}
-.score-item.winner{background:linear-gradient(135deg,rgba(108,92,231,.1),rgba(253,121,168,.1));border:2px solid rgba(108,92,231,.25)}
-.score-item.loser{background:rgba(0,0,0,.03);border:2px solid var(--border)}
-.score-name{font-weight:600;font-size:.92em;margin-bottom:4px}
-.score-value{font-size:2em;font-weight:900;color:var(--primary-dark)}
-
-/* ===== Penalty ===== */
-.penalty-header{text-align:center;padding:16px 0}
+.s-item{padding:14px 22px;border-radius:var(--radius-sm);min-width:110px;text-align:center}
+.s-item.winner{background:linear-gradient(135deg,rgba(108,92,231,.1),rgba(253,121,168,.1));border:2px solid rgba(108,92,231,.25)}
+.s-item.loser{background:rgba(0,0,0,.03);border:2px solid var(--border)}
+.s-name{font-weight:600;font-size:.92em;margin-bottom:4px}
+.s-val{font-size:2em;font-weight:900;color:var(--primary-dark)}
+.penalty-hdr{text-align:center;padding:14px 0}
 .penalty-icon{font-size:2.8em}
 .penalty-title{font-size:1.35em;font-weight:700;color:var(--primary-dark);margin:8px 0}
 .penalty-desc{color:var(--text-light);font-size:.92em}
-.penalty-cards{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:20px 0;padding:0 10px}
-.penalty-card{flex:1;min-width:160px;max-width:200px;background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:18px;cursor:pointer;transition:all .25s;text-align:center}
-.penalty-card:hover{border-color:var(--primary-light);transform:translateY(-5px);box-shadow:var(--shadow-lg)}
-.penalty-card.chosen{border-color:var(--accent);background:linear-gradient(135deg,rgba(253,121,168,.08),rgba(108,92,231,.04));transform:translateY(-5px);box-shadow:0 6px 25px rgba(253,121,168,.25)}
-.penalty-card-number{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85em;margin:0 auto 10px}
-.penalty-card-text{font-size:.9em;line-height:1.6;color:var(--text);font-weight:500}
-.chosen-label{display:none;margin-top:10px;padding:5px 14px;background:linear-gradient(135deg,var(--accent),#e84393);color:#fff;border-radius:20px;font-size:.78em;font-weight:600}
-.penalty-card.chosen .chosen-label{display:inline-block}
-
-/* ===== Confetti ===== */
-.confetti-container{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;overflow:hidden}
-.confetti{position:absolute;width:10px;height:10px;border-radius:2px;animation:confettiFall linear forwards}
-@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0)}100%{transform:translateY(100vh) rotate(720deg)}}
-
-/* ===== Rules ===== */
-.rules-toggle{text-align:center;margin-top:14px}
-.rules-toggle-btn{color:var(--primary);cursor:pointer;font-size:.88em;border:none;background:none;font-family:inherit;text-decoration:underline;text-underline-offset:3px}
-.rules-content{display:none;margin-top:10px;padding:14px;background:rgba(108,92,231,.04);border-radius:var(--radius-sm);font-size:.84em;line-height:1.8;color:var(--text-light)}
-.rules-content.show{display:block}
-.rules-content strong{color:var(--primary-dark)}
-
-/* ===== Footer ===== */
+.p-cards{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:20px 0;padding:0 10px}
+.p-card{flex:1;min-width:160px;max-width:200px;background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:18px;cursor:pointer;transition:all .25s;text-align:center}
+.p-card:hover{border-color:var(--primary-light);transform:translateY(-5px);box-shadow:var(--shadow-lg)}
+.p-card.chosen{border-color:var(--accent);background:linear-gradient(135deg,rgba(253,121,168,.08),rgba(108,92,231,.04));transform:translateY(-5px)}
+.p-card-num{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85em;margin:0 auto 10px}
+.p-card-text{font-size:.9em;line-height:1.6;color:var(--text);font-weight:500}
+.chosen-lbl{display:none;margin-top:10px;padding:5px 14px;background:linear-gradient(135deg,var(--accent),#e84393);color:#fff;border-radius:20px;font-size:.78em;font-weight:600}
+.p-card.chosen .chosen-lbl{display:inline-block}
+.confetti-c{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;overflow:hidden}
+.confetti{position:absolute;width:10px;height:10px;border-radius:2px;animation:cf 3s linear forwards}
+@keyframes cf{0%{transform:translateY(-20px) rotate(0)}100%{transform:translateY(100vh) rotate(720deg)}}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--card);border-radius:var(--radius-sm);padding:12px 20px;box-shadow:var(--shadow-lg);font-size:.9em;font-weight:500;z-index:2000;transition:transform .35s ease;display:flex;align-items:center;gap:8px}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.error{border-left:4px solid var(--danger)}
+.toast.success{border-left:4px solid var(--success)}
+.toast.info{border-left:4px solid var(--primary)}
 .footer{margin-top:auto;padding:20px;text-align:center;font-size:.75em;color:var(--text-muted)}
-
-/* ===== Responsive ===== */
 @media(max-width:480px){
-.game-title{font-size:1.8em}
-.card{padding:18px}
-.board-container{padding:14px}
-.bubble{min-width:30px;min-height:30px}
-.penalty-cards{flex-direction:column;align-items:center}
-.penalty-card{max-width:280px;min-width:auto;width:100%}
-.btn-lg{padding:14px 30px;font-size:1.05em}
+.game-title{font-size:1.7em}.card{padding:16px}.board-container{padding:14px}
+.bubble{min-width:28px;min-height:28px}
+.p-cards{flex-direction:column;align-items:center}.p-card{max-width:280px;min-width:auto;width:100%}
+.players-bar{flex-direction:column;align-items:center}.player-chip{width:100%;justify-content:center}
 }
 </style>
+<script>
+  // 🔧 生产环境请修改为你的后端部署地址
+  window.SOCKET_SERVER_URL = window.SOCKET_SERVER_URL ||
+    (location.hostname === "localhost" ? "http://localhost:3001" : "https://bubble-board-server.onrender.com");
+  </script>
 </head>
 <body>
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
-<!-- ========== 设置界面 ========== -->
-<div id="setup-screen" class="screen active">
+<!-- ===== 模式选择 ===== -->
+<div id="mode-screen" class="screen active">
+  <div class="top-bar"><div></div><div><span class="conn-dot off" id="conn-dot"></span><span style="font-size:.78em;color:var(--text-muted)">服务器</span></div></div>
   <div class="game-header">
     <div class="game-title">🫧 按泡泡板</div>
-    <div class="game-subtitle">双人策略对战 · 经典 Nim 变体</div>
+    <div class="game-subtitle">联机对战 · 双人策略</div>
   </div>
   <div class="card">
-    <div class="card-title">👥 玩家设置</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">玩家 1</label>
-        <input type="text" id="p1-name" class="form-input" value="玩家1" maxlength="8">
+    <div class="card-title">👤 你的昵称</div>
+    <input class="form-input" id="input-name" placeholder="输入昵称..." maxlength="8" value="玩家">
+  </div>
+  <div class="card">
+    <div class="card-title">🎮 游戏模式</div>
+    <div class="mode-cards">
+      <div class="mode-card" onclick="showCreateRoom()">
+        <div class="mode-icon">🏠</div>
+        <div class="mode-name">创建房间</div>
+        <div class="mode-desc">创建房间，分享房间号给好友加入</div>
       </div>
-      <div class="form-group">
-        <label class="form-label">玩家 2</label>
-        <input type="text" id="p2-name" class="form-input" value="玩家2" maxlength="8">
+      <div class="mode-card" onclick="showJoinScreen()">
+        <div class="mode-icon">🚪</div>
+        <div class="mode-name">加入房间</div>
+        <div class="mode-desc">输入房间号，加入好友的房间</div>
       </div>
     </div>
   </div>
+  <div class="footer">🫧 按泡泡板 · 联机版</div>
+</div>
+
+<!-- ===== 创建房间（设置） ===== -->
+<div id="create-screen" class="screen">
+  <div class="top-bar"><button class="back-btn" onclick="backToHome()">← 返回</button><div></div></div>
+  <div class="game-header"><div class="game-title" style="font-size:1.6em">🏠 创建房间</div></div>
   <div class="card">
     <div class="card-title">⚙️ 游戏规则</div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">泡泡总数</label>
-        <input type="number" id="bubble-count" class="form-input" value="15" min="5" max="50">
-      </div>
-      <div class="form-group">
-        <label class="form-label">每轮最大按数</label>
-        <input type="number" id="max-pop" class="form-input" value="3" min="2" max="10">
-      </div>
+      <div class="form-group"><label class="form-label">泡泡总数</label><input type="number" id="input-total" class="form-input" value="15" min="5" max="50"></div>
+      <div class="form-group"><label class="form-label">每轮最大按数</label><input type="number" id="input-max" class="form-input" value="3" min="2" max="10"></div>
     </div>
-    <p class="form-hint">每轮可选择按 1 ~ N 个泡泡，按到最后一个泡泡的玩家获胜</p>
-    <div class="rules-toggle">
-      <button class="rules-toggle-btn" onclick="toggleRules()">📖 详细规则</button>
-    </div>
-    <div id="rules-content" class="rules-content">
-      <strong>游戏流程：</strong><br>
-      1. 抽签决定先手玩家<br>
-      2. 双方轮流按泡泡，每轮可按 1~N 个<br>
-      3. 同一轮内可分次选择，确认后换人<br>
-      4. 按到最后一个泡泡的玩家获胜<br><br>
-      <strong>策略提示：</strong><br>
-      · 不告诉你~<br>
-      <strong>惩罚机制：</strong><br>
-      · 每轮结束后，输家须从 3 张真心话卡中选择 1 张执行
-    </div>
+    <p class="form-hint">每轮可选择按 1~N 个泡泡，按到最后一个泡泡的玩家获胜</p>
   </div>
-  <div style="margin-top:24px">
-    <button class="btn btn-primary btn-lg" onclick="goToCoinToss()">🎮 开始游戏</button>
-  </div>
-  <div class="footer">🫧 按泡泡板 · 双人策略对战</div>
+  <div style="margin-top:24px"><button class="btn btn-primary btn-lg" onclick="doCreateRoom()">✅ 创建房间</button></div>
 </div>
 
-<!-- ========== 投币界面 ========== -->
-<div id="coin-screen" class="screen">
-  <div class="game-header">
-    <div class="game-title">🪙 抽签决定先手</div>
-    <div class="game-subtitle">命运之硬币将决定谁先出手</div>
-  </div>
+<!-- ===== 等待界面（房主） ===== -->
+<div id="wait-screen" class="screen">
+  <div class="top-bar"><button class="back-btn" onclick="backToHome()">← 返回</button><div></div></div>
   <div class="card">
-    <div class="coin-area">
-      <div class="coin" id="coin">🪙</div>
-      <div class="coin-result" id="coin-result"></div>
+    <div class="wait-area">
+      <div class="wait-icon">⏳</div>
+      <div class="wait-text" id="wait-status">等待对手加入...</div>
+      <div class="wait-sub">分享房间号给好友</div>
+      <div class="room-id-display" id="created-room-id-display">
+        <span id="created-room-id"></span>
+        <button class="copy-btn" onclick="copyRoomId()">📋</button>
+      </div>
+      <div id="wait-players" style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap"></div>
     </div>
   </div>
   <div style="margin-top:20px">
-    <button class="btn btn-primary btn-lg" id="flip-btn" onclick="flipCoin()">🎯 投币抽签</button>
-  </div>
-  <div style="margin-top:16px;display:none" id="start-game-wrap">
-    <button class="btn btn-accent btn-lg" onclick="startGame()">▶ 进入对战</button>
-  </div>
-  <div class="footer">
-    <button class="btn btn-secondary" onclick="showScreen('setup-screen')" style="font-size:.82em;padding:8px 18px">← 返回设置</button>
+    <button class="btn btn-accent btn-lg" id="start-btn" onclick="startGameOnline()" disabled>▶ 开始游戏</button>
   </div>
 </div>
 
-<!-- ========== 游戏界面 ========== -->
+<!-- ===== 加入房间列表 ===== -->
+<div id="join-screen" class="screen">
+  <div class="top-bar"><button class="back-btn" onclick="backToHome()">← 返回</button><div></div></div>
+  <div class="game-header"><div class="game-title" style="font-size:1.6em">🚪 加入房间</div></div>
+  <div class="card">
+    <div class="card-title">📋 可用房间</div>
+    <div class="room-list" id="room-list">
+      <div class="room-empty">正在加载...</div>
+    </div>
+  </div>
+  <div class="footer" style="margin-top:10px">
+    <button class="btn btn-secondary btn-sm" onclick="socket.emit('get-room-list')">🔄 刷新列表</button>
+  </div>
+</div>
+
+<!-- ===== 加入等待 ===== -->
+<div id="join-wait-screen" class="screen">
+  <div class="top-bar"><button class="back-btn" onclick="backToHome()">← 返回</button><div></div></div>
+  <div class="card">
+    <div class="wait-area">
+      <div class="wait-icon">⏳</div>
+      <div class="wait-text">已加入房间</div>
+      <div class="room-id-display" id="created-room-id2"></div>
+      <div class="wait-sub">等待房主开始游戏...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 游戏界面 ===== -->
 <div id="game-screen" class="screen">
+  <div class="top-bar"><div></div><div style="font-size:.82em;color:var(--text-light)">房间: <b id="created-room-id3"></b></div></div>
+  <div class="players-bar" id="players-bar"></div>
   <div class="game-info">
-    <div class="info-badge">🫧 剩余 <span class="value" id="remaining">0</span></div>
-    <div class="info-badge">👆 最多按 <span class="value" id="max-pop-display">0</span></div>
-    <div class="info-badge">✅ 已选 <span class="value" id="selected-count">0</span></div>
+    <div class="info-badge">🫧 剩余 <span class="val" id="remain-count">0</span></div>
+    <div class="info-badge">👆 最多按 <span class="val" id="max-pop-display">0</span></div>
   </div>
-  <div class="turn-indicator" id="turn-indicator"></div>
-  <div class="board-container">
-    <div class="board" id="board"></div>
-  </div>
+  <div class="turn-indicator t1" id="turn-indicator"></div>
+  <div class="board-container"><div class="board" id="board"></div></div>
   <div class="game-controls">
     <button class="btn btn-primary" id="confirm-btn" onclick="confirmPop()" disabled>✓ 确认按泡泡</button>
-    <button class="btn btn-secondary" onclick="resetSelection()">↩ 重选</button>
+    <button class="btn btn-secondary" id="reset-btn" onclick="resetSelection()">↩ 重选</button>
   </div>
-  <div class="selection-info" id="selection-info">点击泡泡选择本轮要按的泡泡</div>
-  <div class="footer">
-    <button class="btn btn-secondary" onclick="confirmEndGame()" style="font-size:.78em;padding:6px 14px">🚪 结束游戏</button>
-  </div>
+  <div class="sel-info" id="sel-info">连接中...</div>
 </div>
 
-<!-- ========== 胜利界面 ========== -->
+<!-- ===== 胜利界面 ===== -->
 <div id="win-screen" class="screen">
-  <div id="confetti-container" class="confetti-container"></div>
+  <div class="confetti-c" id="confetti-c"></div>
   <div class="card">
     <div class="win-content">
       <div class="win-crown">👑</div>
-      <div class="win-name" id="winner-name"></div>
+      <div class="win-name" id="win-name"></div>
       <div class="win-msg" id="win-msg"></div>
       <div class="scores">
-        <div class="score-item" id="score-p1">
-          <div class="score-name" id="score-p1-name"></div>
-          <div class="score-value" id="score-p1-val">0</div>
-        </div>
-        <div class="score-item" id="score-p2">
-          <div class="score-name" id="score-p2-name"></div>
-          <div class="score-value" id="score-p2-val">0</div>
-        </div>
+        <div class="s-item" id="s-item-0"><div class="s-name" id="s0-name"></div><div class="s-val" id="s0-val">0</div></div>
+        <div class="s-item" id="s-item-1"><div class="s-name" id="s1-name"></div><div class="s-val" id="s1-val">0</div></div>
       </div>
       <button class="btn btn-accent btn-lg" onclick="showPenalty()">🎯 查看惩罚</button>
     </div>
   </div>
-  <div class="footer">
-    <button class="btn btn-secondary" onclick="backToSetup()" style="font-size:.82em;padding:8px 18px">🏠 返回首页</button>
-  </div>
 </div>
 
-<!-- ========== 惩罚界面 ========== -->
+<!-- ===== 惩罚界面 ===== -->
 <div id="penalty-screen" class="screen">
-  <div class="penalty-header">
+  <div class="penalty-hdr">
     <div class="penalty-icon">🎭</div>
     <div class="penalty-title">真心话时间</div>
     <div class="penalty-desc" id="penalty-desc"></div>
   </div>
-  <div class="penalty-cards" id="penalty-cards"></div>
-  <div style="margin-top:20px;display:none" id="after-penalty-btns">
+  <div class="p-cards" id="penalty-cards"></div>
+  <div style="margin-top:20px;display:none" id="after-penalty">
     <div class="btn-group">
-      <button class="btn btn-primary" onclick="nextRound()">🔄 再来一轮</button>
-      <button class="btn btn-secondary" onclick="backToSetup()">🏠 返回首页</button>
+      <button class="btn btn-primary" onclick="playAgain()">🔄 再来一轮</button>
+      <button class="btn btn-secondary" onclick="backToHome()">🏠 返回首页</button>
     </div>
   </div>
 </div>
 
-<!-- ========== 结束确认 ========== -->
-<div id="end-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:none;align-items:center;justify-content:center">
-  <div class="card" style="max-width:340px;text-align:center">
-    <div style="font-size:2em;margin-bottom:10px">⚠️</div>
-    <div style="font-weight:700;margin-bottom:8px">确定要结束游戏吗？</div>
-    <div style="color:var(--text-light);font-size:.88em;margin-bottom:20px">当前对局进度将丢失</div>
+<!-- ===== 确认弹窗 ===== -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-icon" id="modal-icon"></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-desc" id="modal-desc"></div>
     <div class="btn-group">
-      <button class="btn btn-danger" onclick="endGame()" style="background:linear-gradient(135deg,var(--danger),#d63031);color:#fff;box-shadow:0 4px 15px rgba(225,112,85,.35)">确定结束</button>
-      <button class="btn btn-secondary" onclick="closeEndModal()">取消</button>
+      <button class="btn btn-danger" id="modal-confirm">确定</button>
+      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
     </div>
   </div>
 </div>
+
+<div class="footer" style="display:none">🫧 按泡泡板</div>
 
 <script>
-// ========== 真心话卡库 ==========
+
+// ===== 真心话题库 =====
 const PENALTY_POOL = [
   "分享一件你最尴尬的事",
   "说出你最近一次说谎的经历",
@@ -318,305 +330,377 @@ const PENALTY_POOL = [
   "说出如果可以和任何人交换生活一天你选谁"
 ];
 
-// ========== 游戏状态 ==========
-let game = {
-  p1: '玩家1', p2: '玩家2',
-  totalBubbles: 15, maxPop: 3,
-  bubbles: [], currentPlayer: 1,
-  selectedBubbles: new Set(),
-  firstPlayer: 1,
-  scores: { 1: 0, 2: 0 },
-  penaltyCards: [], chosenPenalty: -1,
-  roundCount: 0
-};
+// ===== 全局状态 =====
+let socket = null;
+let myPlayerIdx = -1;
+let myName = '';
+let currentRoomId = '';
+let gameState = null; // { players, totalBubbles, maxPop, bubbles, currentPlayerIdx, firstPlayerIdx }
+let selectedBubbles = new Set();
+let scores = [0, 0];
+let isMyTurn = false;
 
-// ========== 工具函数 ==========
+// ===== 工具 =====
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-
-function shuffleArray(arr) {
+function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
 }
+function toast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.className = 'toast ' + type;
+  t.innerHTML = (type === 'error' ? '⚠️ ' : type === 'success' ? '✅ ' : 'ℹ️ ') + msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+function $(id) { return document.getElementById(id); }
 
-function toggleRules() {
-  document.getElementById('rules-content').classList.toggle('show');
+// ===== Socket 连接 =====
+function connectSocket() {
+  const SERVER_URL = window.SOCKET_SERVER_URL;
+  socket = io(SERVER_URL, { reconnection: true });
+  
+  socket.on('connect', () => {
+    $('conn-dot').className = 'conn-dot on';
+    socket.emit('get-room-list');
+  });
+  socket.on('disconnect', () => {
+    $('conn-dot').className = 'conn-dot off';
+  });
+
+  // 房间创建成功
+  socket.on('room-created', ({ roomId }) => {
+    currentRoomId = roomId;
+    $('created-room-id').textContent = roomId;
+    $('created-room-id2').textContent = roomId;
+    showScreen('wait-screen');
+    toast('房间已创建，等待对手加入...', 'success');
+  });
+
+  // 房间列表更新
+  socket.on('room-list', (list) => {
+    renderRoomList(list);
+  });
+
+  // 对方加入
+  socket.on('player-joined', ({ players, host, totalBubbles, maxPop }) => {
+    // 更新等待界面信息
+    $('wait-players').innerHTML = players.map((n, i) =>
+      '<span style="padding:4px 12px;background:' + (i === 0 ? 'rgba(108,92,231,.1);color:#5541d6' : 'rgba(253,121,168,.1);color:#c0225e') + ';border-radius:20px;font-weight:600;font-size:.9em">' + n + '</span>'
+    ).join(' vs ');
+    $('wait-status').textContent = '对手已加入！准备开始...';
+    $('start-btn').disabled = false;
+    toast(players[1] + ' 已加入房间！', 'success');
+  });
+
+  // 游戏开始
+  socket.on('game-start', ({ firstPlayerIdx, players, totalBubbles, maxPop, isRematch }) => {
+    gameState = {
+      players, totalBubbles, maxPop,
+      bubbles: Array(totalBubbles).fill(false),
+      currentPlayerIdx, firstPlayerIdx
+    };
+    selectedBubbles = new Set();
+    isMyTurn = (myPlayerIdx === firstPlayerIdx);
+    renderGameScreen();
+    showScreen('game-screen');
+    if (isRematch) toast('新一局开始！', 'info');
+  });
+
+  // 选择更新（实时同步）
+  socket.on('selection-update', ({ selected, currentPlayerIdx }) => {
+    if (!gameState) return;
+    // 只更新对方的选择显示（我方选择由本地处理）
+    renderBoard();
+    updateSelInfo();
+  });
+
+  // 回合切换
+  socket.on('turn-change', ({ currentPlayerIdx, currentPlayerName, remaining, lastPopped }) => {
+    if (!gameState) return;
+    gameState.currentPlayerIdx = currentPlayerIdx;
+    lastPopped.forEach(idx => { gameState.bubbles[idx] = true; });
+    isMyTurn = (myPlayerIdx === currentPlayerIdx);
+    selectedBubbles = new Set();
+    renderBoard();
+    updateTurnUI();
+    updateSelInfo();
+    $('confirm-btn').disabled = true;
+    // 播放按破动画
+    lastPopped.forEach(idx => {
+      const el = document.querySelector('#board .bubble[data-idx="' + idx + '"]');
+      if (el) { el.classList.add('popping'); setTimeout(() => el.classList.replace('popping', 'popped'), 350); }
+    });
+    $('remain-count').textContent = remaining;
+  });
+
+  // 游戏结束
+  socket.on('game-over', ({ winnerIdx, winnerName, loserName, loserIdx }) => {
+    if (winnerIdx === myPlayerIdx) scores[0]++; else scores[1]++;
+    setTimeout(() => showWinScreen(winnerIdx, winnerName, loserName), 600);
+  });
+
+  // 对方离开
+  socket.on('opponent-left', () => {
+    showModal('对手已离开游戏', '😢', '对方已断开连接，返回首页？', () => backToHome());
+  });
+
+  // 错误
+  socket.on('error-msg', ({ msg }) => toast(msg, 'error'));
 }
 
-// ========== 设置 → 投币 ==========
-function goToCoinToss() {
-  game.p1 = document.getElementById('p1-name').value.trim() || '玩家1';
-  game.p2 = document.getElementById('p2-name').value.trim() || '玩家2';
-  game.totalBubbles = Math.max(5, Math.min(50, parseInt(document.getElementById('bubble-count').value) || 15));
-  game.maxPop = Math.max(2, Math.min(10, parseInt(document.getElementById('max-pop').value) || 3));
-  document.getElementById('coin-result').innerHTML = '';
-  document.getElementById('start-game-wrap').style.display = 'none';
-  document.getElementById('flip-btn').style.display = '';
-  const coin = document.getElementById('coin');
-  coin.classList.remove('flipping');
-  coin.textContent = '🪙';
-  showScreen('coin-screen');
+// ===== 渲染函数 =====
+function renderRoomList(list) {
+  const el = $('room-list');
+  if (!list || list.length === 0) {
+    el.innerHTML = '<div class="room-empty">暂无可用房间，创建一个吧！</div>';
+    return;
+  }
+  el.innerHTML = list.map(r =>
+    '<div class="room-item" onclick="joinRoom(\'' + r.id + '\')">' +
+    '<div><div class="room-id">' + r.id + '</div>' +
+    '<div class="room-info">房主：' + r.host + ' · 等待中</div></div>' +
+    '<div style="font-size:.82em;color:var(--primary);font-weight:600">加入 →</div></div>'
+  ).join('');
 }
 
-// ========== 投币 ==========
-function flipCoin() {
-  const coin = document.getElementById('coin');
-  coin.classList.remove('flipping');
-  void coin.offsetWidth; // reflow
-  coin.classList.add('flipping');
-  document.getElementById('flip-btn').disabled = true;
-  game.firstPlayer = Math.random() < 0.5 ? 1 : 2;
-  const winnerName = game.firstPlayer === 1 ? game.p1 : game.p2;
-  setTimeout(() => {
-    coin.textContent = game.firstPlayer === 1 ? '1️⃣' : '2️⃣';
-    document.getElementById('coin-result').innerHTML =
-      `✨ <span>${winnerName}</span> 先手！✨`;
-    document.getElementById('flip-btn').style.display = 'none';
-    document.getElementById('start-game-wrap').style.display = '';
-    document.getElementById('flip-btn').disabled = false;
-  }, 1300);
-}
-
-// ========== 开始游戏 ==========
-function startGame() {
-  game.bubbles = Array(game.totalBubbles).fill(false);
-  game.currentPlayer = game.firstPlayer;
-  game.selectedBubbles = new Set();
-  game.roundCount++;
-  updateInfoBadges();
+function renderGameScreen() {
+  if (!gameState) return;
+  // 玩家栏
+  $('players-bar').innerHTML = gameState.players.map((name, i) =>
+    '<div class="player-chip p' + (i+1) + '" id="chip-' + i + '">' +
+    '<div class="player-dot" style="background:' + (i === 0 ? 'var(--primary)' : 'var(--accent)') + '"></div>' +
+    name + (i === gameState.firstPlayerIdx ? ' ⭐先手' : '') + '</div>'
+  ).join('');
+  $('remain-count').textContent = gameState.bubbles.filter(b => !b).length;
+  $('max-pop-display').textContent = gameState.maxPop;
   renderBoard();
-  updateTurnIndicator();
-  updateSelectionInfo();
-  document.getElementById('confirm-btn').disabled = true;
-  showScreen('game-screen');
+  updateTurnUI();
+  updateSelInfo();
 }
 
-function updateInfoBadges() {
-  const rem = game.bubbles.filter(b => !b).length;
-  document.getElementById('remaining').textContent = rem;
-  document.getElementById('max-pop-display').textContent = game.maxPop;
-  document.getElementById('selected-count').textContent = game.selectedBubbles.size;
-}
-
-// ========== 渲染棋盘 ==========
 function renderBoard() {
-  const board = document.getElementById('board');
-  const rem = game.bubbles.filter(b => !b).length;
+  if (!gameState) return;
+  const rem = gameState.bubbles.filter(b => !b).length;
   let cols;
   if (rem <= 9) cols = 3;
   else if (rem <= 16) cols = 4;
   else if (rem <= 25) cols = 5;
   else if (rem <= 36) cols = 6;
   else cols = 7;
-  board.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  const board = $('board');
+  board.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
   board.innerHTML = '';
-  game.bubbles.forEach((popped, i) => {
+  gameState.bubbles.forEach((popped, i) => {
     const el = document.createElement('div');
-    el.className = 'bubble' + (popped ? ' popped' : '') + (game.selectedBubbles.has(i) ? ' selected' : '');
-    el.dataset.index = i;
+    el.className = 'bubble' +
+      (popped ? ' popped' : '') +
+      (selectedBubbles.has(i) ? ' selected' : '') +
+      (!popped && !isMyTurn ? ' not-turn' : '');
+    el.dataset.idx = i;
     const inner = document.createElement('div');
     inner.className = 'bubble-inner';
     el.appendChild(inner);
-    if (!popped) el.addEventListener('click', () => toggleBubble(i));
+    if (!popped && isMyTurn) el.addEventListener('click', () => toggleBubble(i));
     board.appendChild(el);
   });
 }
 
-// ========== 点击泡泡 ==========
+function updateTurnUI() {
+  if (!gameState) return;
+  const el = $('turn-indicator');
+  const name = gameState.players[gameState.currentPlayerIdx];
+  el.className = 'turn-indicator t' + (gameState.currentPlayerIdx + 1);
+  el.innerHTML = (gameState.currentPlayerIdx === 0 ? '💜 ' : '💖 ') + name + ' 的回合';
+  // 玩家栏高亮
+  gameState.players.forEach((_, i) => {
+    const chip = $('chip-' + i);
+    if (chip) chip.classList.toggle('is-turn', i === gameState.currentPlayerIdx);
+  });
+}
+
+function updateSelInfo() {
+  const el = $('sel-info');
+  if (!isMyTurn) { el.textContent = '等待 ' + gameState.players[gameState.currentPlayerIdx] + ' 操作...'; return; }
+  if (selectedBubbles.size === 0) { el.textContent = '点击泡泡选择本轮要按的泡泡'; return; }
+  const canMore = selectedBubbles.size < gameState.maxPop;
+  el.textContent = '已选 ' + selectedBubbles.size + ' 个' + (canMore ? '（可继续选择或确认）' : '（已达上限，请确认）');
+}
+
+// ===== 游戏操作 =====
 function toggleBubble(index) {
-  if (game.bubbles[index]) return;
-  if (game.selectedBubbles.has(index)) {
-    game.selectedBubbles.delete(index);
+  if (!gameState || !isMyTurn) return;
+  if (gameState.bubbles[index]) return;
+  if (selectedBubbles.has(index)) {
+    selectedBubbles.delete(index);
   } else {
-    if (game.selectedBubbles.size >= game.maxPop) return;
-    game.selectedBubbles.add(index);
+    if (selectedBubbles.size >= gameState.maxPop) return;
+    selectedBubbles.add(index);
   }
   renderBoard();
-  updateInfoBadges();
-  updateSelectionInfo();
-  document.getElementById('confirm-btn').disabled = game.selectedBubbles.size === 0;
+  updateSelInfo();
+  $('confirm-btn').disabled = selectedBubbles.size === 0;
+  // 实时同步选择状态给对手
+  socket.emit('toggle-bubble', { index, roomId: currentRoomId });
+}
+
+function confirmPop() {
+  if (!gameState || !isMyTurn || selectedBubbles.size === 0) return;
+  $('confirm-btn').disabled = true;
+  $('reset-btn').disabled = true;
+  socket.emit('confirm-pop', { roomId: currentRoomId });
 }
 
 function resetSelection() {
-  game.selectedBubbles = new Set();
+  if (!gameState || !isMyTurn) return;
+  selectedBubbles = new Set();
   renderBoard();
-  updateInfoBadges();
-  updateSelectionInfo();
-  document.getElementById('confirm-btn').disabled = true;
+  updateSelInfo();
+  $('confirm-btn').disabled = true;
+  socket.emit('reset-selection', { roomId: currentRoomId });
 }
 
-function updateSelectionInfo() {
-  const el = document.getElementById('selection-info');
-  if (game.selectedBubbles.size === 0) {
-    el.textContent = '点击泡泡选择本轮要按的泡泡';
-  } else {
-    const canMore = game.selectedBubbles.size < game.maxPop;
-    const rem = game.bubbles.filter(b => !b).length;
-    el.textContent = `已选 ${game.selectedBubbles.size} 个` +
-      (canMore ? '（可继续选择或确认）' : '（已达上限，请确认）') +
-      (rem > game.selectedBubbles.size && canMore ? '' : '');
-  }
+// ===== 界面切换 =====
+function showModeSelect() {
+  showScreen('mode-screen');
 }
 
-function updateTurnIndicator() {
-  const el = document.getElementById('turn-indicator');
-  const name = game.currentPlayer === 1 ? game.p1 : game.p2;
-  const isP1 = game.currentPlayer === 1;
-  el.className = 'turn-indicator ' + (isP1 ? 'p1' : 'p2');
-  el.innerHTML = (isP1 ? '💜' : '💖') + ` ${name} 的回合`;
+function showCreateRoom() {
+  $('wait-players').innerHTML = '<span style="padding:4px 12px;background:rgba(108,92,231,.1);color:#5541d6;border-radius:20px;font-weight:600;font-size:.9em">' + myName + '</span> vs ?';
+  $('wait-status').textContent = '等待对手加入...';
+  $('start-btn').disabled = true;
+  showScreen('create-screen');
 }
 
-// ========== 确认按泡泡 ==========
-function confirmPop() {
-  if (game.selectedBubbles.size === 0) return;
-  const toPop = [...game.selectedBubbles];
-  let delay = 0;
-  toPop.forEach((index, i) => {
-    setTimeout(() => {
-      game.bubbles[index] = true;
-      const bEl = document.querySelector(`.bubble[data-index="${index}"]`);
-      if (bEl) {
-        bEl.classList.remove('selected');
-        bEl.classList.add('popping');
-        setTimeout(() => bEl.classList.replace('popping', 'popped'), 350);
-      }
-      updateInfoBadges();
-      if (i === toPop.length - 1) {
-        setTimeout(() => {
-          const remaining = game.bubbles.filter(b => !b).length;
-          if (remaining === 0) {
-            showWinScreen(game.currentPlayer);
-          } else {
-            game.currentPlayer = game.currentPlayer === 1 ? 2 : 1;
-            game.selectedBubbles = new Set();
-            renderBoard();
-            updateTurnIndicator();
-            updateSelectionInfo();
-            document.getElementById('confirm-btn').disabled = true;
-          }
-        }, 400);
-      }
-    }, delay);
-    delay += 200;
-  });
+function doCreateRoom() {
+  const name = $('input-name').value.trim() || '玩家';
+  myName = name;
+  const total = Math.max(5, Math.min(50, parseInt($('input-total').value) || 15));
+  const maxPop = Math.max(2, Math.min(10, parseInt($('input-max').value) || 3));
+  socket.emit('create-room', { playerName: name, totalBubbles: total, maxPop });
 }
 
-// ========== 胜利界面 ==========
-function showWinScreen(winner) {
-  const name = winner === 1 ? game.p1 : game.p2;
-  const loser = winner === 1 ? 2 : 1;
-  const loserName = loser === 1 ? game.p1 : game.p2;
-  game.scores[winner]++;
-  document.getElementById('winner-name').textContent = name;
-  document.getElementById('win-msg').textContent = `${name} 按下了最后一个泡泡，赢得本局！`;
-  document.getElementById('score-p1-name').textContent = game.p1;
-  document.getElementById('score-p2-name').textContent = game.p2;
-  document.getElementById('score-p1-val').textContent = game.scores[1];
-  document.getElementById('score-p2-val').textContent = game.scores[2];
-  document.getElementById('score-p1').className = 'score-item ' + (winner === 1 ? 'winner' : 'loser');
-  document.getElementById('score-p2').className = 'score-item ' + (winner === 2 ? 'winner' : 'loser');
-  // 准备惩罚卡
-  const shuffled = shuffleArray([...PENALTY_POOL]);
-  game.penaltyCards = shuffled.slice(0, 3);
-  game.chosenPenalty = -1;
-  document.getElementById('after-penalty-btns').style.display = 'none';
+function showJoinScreen() {
+  myName = $('input-name').value.trim() || '玩家';
+  socket.emit('get-room-list');
+  showScreen('join-screen');
+}
+
+function joinRoom(roomId) {
+  const name = $('input-name').value.trim() || '玩家';
+  myName = name;
+  socket.emit('join-room', { roomId, playerName: name });
+  currentRoomId = roomId;
+  showScreen('join-wait-screen');
+  toast('正在加入房间 ' + roomId + '...', 'info');
+}
+
+function startGameOnline() {
+  socket.emit('start-game', { roomId: currentRoomId });
+}
+
+// ===== 胜利界面 =====
+function showWinScreen(winnerIdx, winnerName, loserName) {
+  $('win-name').textContent = winnerName;
+  $('win-msg').textContent = winnerName + ' 按下了最后一个泡泡！';
+  $('s0-name').textContent = gameState.players[0];
+  $('s1-name').textContent = gameState.players[1];
+  $('s0-val').textContent = scores[0];
+  $('s1-val').textContent = scores[1];
+  $('s-item-0').className = 's-item ' + (winnerIdx === 0 ? 'winner' : 'loser');
+  $('s-item-1').className = 's-item ' + (winnerIdx === 1 ? 'winner' : 'loser');
   showScreen('win-screen');
   createConfetti();
+  // 保存惩罚信息
+  const loserIdx = winnerIdx === 0 ? 1 : 0;
+  window._penaltyLoserName = gameState.players[loserIdx];
+  window._penaltyLoserIdx = loserIdx;
 }
 
-// ========== 五彩纸屑 ==========
-function createConfetti() {
-  const container = document.getElementById('confetti-container');
-  container.innerHTML = '';
-  const colors = ['#6c5ce7','#fd79a8','#00b894','#fdcb6e','#e17055','#74b9ff','#a29bfe','#fab1d0'];
-  for (let i = 0; i < 60; i++) {
-    const c = document.createElement('div');
-    c.className = 'confetti';
-    c.style.left = Math.random() * 100 + '%';
-    c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-    c.style.animationDuration = (2 + Math.random() * 2) + 's';
-    c.style.animationDelay = Math.random() * 1.5 + 's';
-    c.style.width = (6 + Math.random() * 8) + 'px';
-    c.style.height = (6 + Math.random() * 8) + 'px';
-    if (Math.random() > 0.5) c.style.borderRadius = '50%';
-    container.appendChild(c);
-  }
-  setTimeout(() => container.innerHTML = '', 5000);
-}
-
-// ========== 惩罚界面 ==========
+// ===== 惩罚 =====
 function showPenalty() {
-  const winner = game.scores[1] > game.scores[2] ? 1 : 2;
-  const loser = winner === 1 ? 2 : 1;
-  const loserName = loser === 1 ? game.p1 : game.p2;
-  document.getElementById('penalty-desc').textContent = `${loserName} 输了本局，请从以下 3 张真心话卡中选择 1 张执行：`;
-  const container = document.getElementById('penalty-cards');
+  const shuffled = shuffle([...PENALTY_POOL]).slice(0, 3);
+  window._penaltyCards = shuffled;
+  $('penalty-desc').textContent = window._penaltyLoserName + ' 输了本局，请从以下 3 张真心话卡中选择 1 张执行：';
+  const container = $('penalty-cards');
   container.innerHTML = '';
-  game.penaltyCards.forEach((text, i) => {
+  shuffled.forEach((text, i) => {
     const card = document.createElement('div');
-    card.className = 'penalty-card';
-    card.dataset.index = i;
-    card.innerHTML = `
-      <div class="penalty-card-number">${i + 1}</div>
-      <div class="penalty-card-text">${text}</div>
-      <div class="chosen-label">✨ 已选择</div>
-    `;
-    card.addEventListener('click', () => selectPenalty(i));
+    card.className = 'p-card';
+    card.innerHTML = '<div class="p-card-num">' + (i+1) + '</div>' +
+      '<div class="p-card-text">' + text + '</div>' +
+      '<div class="chosen-lbl">✨ 已选择</div>';
+    card.addEventListener('click', () => {
+      window._penaltyChosen = i;
+      container.querySelectorAll('.p-card').forEach((c, j) => c.classList.toggle('chosen', j === i));
+      $('after-penalty').style.display = '';
+    });
     container.appendChild(card);
   });
-  game.chosenPenalty = -1;
-  document.getElementById('after-penalty-btns').style.display = 'none';
+  window._penaltyChosen = -1;
+  $('after-penalty').style.display = 'none';
   showScreen('penalty-screen');
 }
 
-function selectPenalty(index) {
-  game.chosenPenalty = index;
-  document.querySelectorAll('.penalty-card').forEach((c, i) => {
-    c.classList.toggle('chosen', i === index);
-  });
-  document.getElementById('after-penalty-btns').style.display = '';
+function playAgain() {
+  socket.emit('play-again', { roomId: currentRoomId });
 }
 
-// ========== 再来一轮 ==========
-function nextRound() {
-  game.bubbles = Array(game.totalBubbles).fill(false);
-  game.selectedBubbles = new Set();
-  game.currentPlayer = game.firstPlayer === 1 ? 2 : 1;
-  game.firstPlayer = game.currentPlayer;
-  game.roundCount++;
-  updateInfoBadges();
-  renderBoard();
-  updateTurnIndicator();
-  updateSelectionInfo();
-  document.getElementById('confirm-btn').disabled = true;
-  showScreen('game-screen');
+function backToHome() {
+  if (socket && currentRoomId) socket.emit('leave-room', { roomId: currentRoomId });
+  currentRoomId = '';
+  gameState = null;
+  scores = [0, 0];
+  showScreen('mode-screen');
 }
 
-function backToSetup() {
-  showScreen('setup-screen');
+// ===== 五彩纸屑 =====
+function createConfetti() {
+  const c = $('confetti-c');
+  c.innerHTML = '';
+  const colors = ['#6c5ce7','#fd79a8','#00b894','#fdcb6e','#e17055','#74b9ff','#a29bfe','#fab1d0'];
+  for (let i = 0; i < 50; i++) {
+    const d = document.createElement('div');
+    d.className = 'confetti';
+    d.style.left = Math.random() * 100 + '%';
+    d.style.background = colors[Math.floor(Math.random() * colors.length)];
+    d.style.animationDuration = (2 + Math.random() * 2) + 's';
+    d.style.animationDelay = Math.random() * 1.5 + 's';
+    d.style.width = (6 + Math.random() * 8) + 'px';
+    d.style.height = (6 + Math.random() * 8) + 'px';
+    if (Math.random() > 0.5) d.style.borderRadius = '50%';
+    c.appendChild(d);
+  }
+  setTimeout(() => c.innerHTML = '', 5000);
 }
 
-// ========== 结束确认弹窗 ==========
-function confirmEndGame() {
-  document.getElementById('end-modal').style.display = 'flex';
+// ===== Modal =====
+function showModal(title, icon, desc, onConfirm) {
+  $('modal-title').textContent = title;
+  $('modal-icon').textContent = icon;
+  $('modal-desc').textContent = desc;
+  $('modal-confirm').onclick = onConfirm;
+  $('modal-overlay').classList.add('show');
 }
-function closeEndModal() {
-  document.getElementById('end-modal').style.display = 'none';
-}
-function endGame() {
-  closeEndModal();
-  backToSetup();
+function closeModal() { $('modal-overlay').classList.remove('show'); }
+
+// ===== 复制房间号 =====
+function copyRoomId() {
+  navigator.clipboard.writeText(currentRoomId).then(() => toast('房间号已复制！', 'success'));
 }
 
-// ========== 初始化 ==========
+// ===== 初始化 =====
 document.addEventListener('DOMContentLoaded', () => {
-  showScreen('setup-screen');
+  connectSocket();
+  showScreen('mode-screen');
 });
+
 </script>
 </body>
 </html>
